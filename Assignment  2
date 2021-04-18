@@ -1,0 +1,171 @@
+% Particle flow anound cylinder 
+%% Clearing data
+clc
+clear
+close all
+%% Input data
+u_inf = 5;                        % m/s
+Gam =-5;                         % positive gamma is clockwise 
+rad_cir = 2 ;   %Radius meter
+%% Mesh grid 2D
+n=0.5;                                                                      % grid point diffrence 
+x=(-rad_cir*4:n:rad_cir*4);                                                 % x with new values 
+[x]=meshgrid(x);                                                            % square matrix 
+y=x';
+y=flip(y);
+%% Circular cylinder 
+for i=1:length(x)
+   for k=1:length(x)
+      if sqrt(x(i,k).^2+y(i,k).^2)<rad_cir
+         x(i,k)=0;
+         y(i,k)=0;
+      end
+   end
+end
+%% Velocity calculation 
+r=sqrt(x.^2+y.^2);
+theta=atan2(y,x);
+theta_d=atan2d(y,x);
+ur=u_inf*cos(theta).*(1-rad_cir^2./(r.^2));
+ut=-u_inf*sin(theta).*(1+rad_cir^2./(r.^2))+Gam./(2*pi*r);
+u=ur.*cos(theta)-ut.*sin(theta);
+v=ur.*sin(theta)+ut.*cos(theta);
+%% Plot velocity vectors 
+quiver(x,y,u,v)
+axis square
+grid on
+hold on
+%% Particle intial position 
+x_p(1)=-5;            % x location of particle 
+y_p(1)=0;             % Y location of particle 
+%% Intial velocity 
+ux_p1=0;            % x velocity of particle 
+vy_p1=5;            % y velocity of particle 
+%% continous and dispersed phase properties 
+miu_c=1.87*(10^-5);              % dynamic viscosity of air at 30 C
+dia_p=(10^-4);                   % diameter of particle 
+rad_p=dia_p/2;                   % radius of particle 
+roh_c=1.64;                      % density of continous fluid 
+roh_p=2000;                      % density of sand particles 
+
+%%  Other parameters
+vol_p=4*3.14*(rad_p^3)*(1/3);
+mass_p=vol_p*roh_p;                % mass of particle 
+g=9.8;                             % gravity 
+total_t=0.1;                         % total time particle in fluid in sec
+% time steps 
+t_step=0.001;                       % time step for small distance travelled
+% t_step1=0.001;                     % time step for rk4 loop 
+total_step=total_t/t_step;         % total number of steps 
+z= total_step;        
+% z1=t_step/t_step1;
+
+%% Poistion of particle 
+r1=zeros(z,1);
+theta1=zeros(z,1);
+ur1=zeros(z,1);
+ut1=zeros(z,1);
+u1=zeros(z,1);
+v1=zeros(z,1);
+for i=1:z
+  % Velocity of fluid corrospond to particle location   
+ 
+r1(i)=sqrt(x_p(i).^2+y_p(i).^2);                             % radian distance of particle from center 
+theta1(i)=atan2(y_p(i),x_p(i));                              % angle of the location 
+theat1_d=atan2d(y_p(i),x_p(i));
+ur1(i)=u_inf*cos(theta1(i)).*(1-rad_cir^2./(r1(i).^2));      % radian velocity of fluid  
+ut1(i)=-u_inf*sin(theta1(i)).*(1+rad_cir^2./(r1(i).^2))+(Gam./(2*pi*r1(i)));   % tagential velocity of fluid 
+% step 1  velocity of continous fluid 
+
+u1(i)=ur1(i).*cos(theta1(i))-ut1(i).*sin(theta1(i));                        % velocity of continous med. in x direction 
+v1(i)=ur1(i).*sin(theta1(i))+ut1(i).*cos(theta1(i));                        % velocity of conitnous med. in y direction 
+  
+%% step 2 velocity of particle 
+
+%% velocity of particle in x direction 
+
+%% Relitive velcoity x direction
+ux_p(1)=ux_p1;
+u_rel_x=u1(i)-ux_p(i);
+if u_rel_x<0
+    u_rel_x=-u_rel_x;
+end
+
+%% Reynolds number 
+Re_r_x(i)= roh_c*dia_p*u_rel_x/miu_c;
+
+%% Schiller and Naumann’s equation
+f_x(i)=1    +     0.15*(Re_r_x(i)^0.687)     +      0.0175*(   (1   +  4.25*10000  *  (Re_r_x(i)^-1.16)    )^-1    );
+
+% rk4 model
+t(1)=0;
+h=t_step;
+tf=2;
+n=(tf-t)/h;
+f=@(t,ux_p) 3*3.14*miu_c*dia_p*f_x(i)*(u1(i)-ux_p)/(roh_p*vol_p);
+
+% RK4 loop 
+%for i=1:ceil(n)
+    %update t
+    t(i+1)=t(i)+h;
+    %constants 
+    k1=f(t(i)         , ux_p(i)           );
+    k2=f(t(i)+0.5*h   , ux_p(i)+0.5*k1*h);
+    k3=f(t(i)+0.5*h   , ux_p(i)+0.5*k2*h);
+    k4=f(t(i)+    h   , ux_p(i)+    k3*h);
+    %update y
+   ux_p(i+1)=ux_p(i)+(h/6)*(k1 +2*k2+  2*k3 +k4);
+    fprintf('ux_p(%.2f) = %.4f\n', t(i+1),ux_p(i+1))
+%end 
+
+%% distance moved in x direction 
+x_p(i+1)=x_p(i)+(ux_p(i+1)+ux_p(i))*0.5*h;
+
+%% Velocity of particle in y direction 
+%% Relitive velcoity x direction
+vy_p(1)=vy_p1;
+v_rel_y=v1(i)-vy_p(i);
+if v_rel_y<0
+    v_rel_y=-v_rel_y;
+end
+
+%% Reynolds number 
+
+Re_r_y(i)= roh_c*dia_p*v_rel_y/miu_c;
+
+%% Schiller and Naumann’s equation
+
+f_y(i)=1    +     0.15*(Re_r_y(i)^0.687)     +      0.0175*(   (1   +  4.25*10000  *  (Re_r_y(i)^-1.16)    )^-1    );
+
+% rk4 model
+h=t_step;
+tf=2;
+n=(tf-t)/h;
+
+f1=@(t,vy_p) (3*3.14*miu_c*dia_p*f_y(i)*(v1(i)-vy_p)/(roh_p*vol_p))-g;
+ 
+% RK4 loop 
+%for i=1:ceil(n)
+    %update t
+    t(i+1)=t(i)+h;
+    %constants 
+    k11=f1(t(i)         , vy_p(i)           );
+    k12=f1(t(i)+0.5*h   , vy_p(i)+0.5*k11*h);
+    k13=f1(t(i)+0.5*h   , vy_p(i)+0.5*k12*h);
+    k14=f1(t(i)+    h   , vy_p(i)+    k13*h);
+    %update y
+   vy_p(i+1)=vy_p(i)+(h/6)*(k11 +2*k12+  2*k13 +k14);
+    fprintf('y5(%.2f) = %.4f\n', t(i+1),vy_p(i+1))
+%end 
+
+%% Distance moved by particle in y direction 
+
+y_p(i+1)=y_p(i)+(vy_p(i+1)+vy_p(i))*0.5*h;
+
+end
+
+
+plot(x_p,y_p)
+axis square
+hold off
+
