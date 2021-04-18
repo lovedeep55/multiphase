@@ -1,0 +1,364 @@
+% Assignment  3
+
+%% 
+clc
+clear
+close all
+
+
+%%  mesh genration 
+a=1;
+b=0.1;                                                                      % grid point diffrence 
+c=1;
+x=(0:b:c);                                                                  % x with new values 
+n=length(x);
+[x]=meshgrid(x);                                                            % square matrix 
+
+
+y=(0:b:c);                                                                  % x with new values 
+n=length(y);
+[y]=meshgrid(y);  
+y=y';
+y=flip(y);
+
+
+
+%%  free stream velocity defination 
+v_inf=10;                                                     % m/s
+alpha_d=-0;                                                    % angle clockwise with positive x axis
+alpha=alpha_d*pi/180;
+
+%% Particle intial position 
+x_p(1)=0;                                            % x location of particle 
+y_p(1)=0;                                           % Y location of particle 
+%% Particle Intial velocity 
+ux_p(1)=0;                                           % x velocity of particle 
+uy_p(1)=5;                                          % y velocity of particle 
+
+
+
+
+
+%% free stream plotting
+v_inf_x=v_inf*cosd(alpha_d);                          % value of free stream in x direction 
+v_inf_y=v_inf*sind(alpha_d);                          % value of free stream in y direction 
+
+
+
+%v_inf_x1=zeros(n,n);                    
+%v_inf_y1=zeros(n,n);
+
+% Plotting free stream velocity 
+% x and y component of fluid velcoity 
+for i=1:1:n
+    for j=1:1:n
+v_inf_x1(i,j)=v_inf*cosd(alpha_d);
+v_inf_y1(i,j)=v_inf*sind(alpha_d);
+    end
+end
+
+% Plot of free stream velocity 
+figure; 
+quiver(x, y, v_inf_x1, v_inf_y1)
+hold on
+
+%%
+
+t(1)=0;                                              % Intial time 
+h=0.0001;                                            % Time step 
+tf=10;                                              % Final time 
+n1=(tf-t)/h;                                         % Number of time step 
+
+
+%% Temp of air 
+Tc= 100+273.15 ;                                     % Air temp in degree (K) it is constant due to one way coupling 
+
+%% Temp of particle 
+Td(1)= 20+273.15;                                      % intial temprature of water droplet 
+
+%%  Prandtl  number of air 
+Pr=0.7;                                              % Air at 100 degree C
+
+
+Pr1=2.181*(10^-5)*1011*1000/31.62;
+%%
+roh_c=   0.9467;                                     % density of air at 100 c
+dia_p(1)= 0.001 ;                                    % 1 mm
+dia_p_f=dia_p(1)/10;                                 % final diameter of particle 
+miu_c= 2.181*(10^-5);                                % dynamic viscosity of the air 
+%%
+roh_d=  1000;                                     % density of water particle 
+kc=31.62/1000;                                           % thermal conductivity of air 
+cD= 4184  ;                                                %J·kg?1·K?1
+
+%% Latent heat of vapiorization of water
+hl=2260000;                        % j/kg
+
+%% specific heat of air (constant pressure )
+
+cp=1011;                        % j/kg-k
+%%
+p=101320;                                           % atm pressure of air 
+
+%% Diffusion co-efficent (water vapor in air )
+ Dv=0.399/10000;            % m2/s @ 100 degree C
+  
+%% Gravity 
+g=9.8;           % m/s in minus y direction 
+
+
+%% intializing loop 
+i=1;
+
+
+%%  For loop for all the calculations 
+
+while dia_p(i) > dia_p_f
+    
+%% Reynolds number 
+
+% X direction 
+% velocity of free stream at particular point in x direction 
+%u_inf_x2=zeros(n1,1);                 
+u_inf_x2(i)=v_inf*cosd(alpha_d);                    
+
+% Relitive velcoity x direction
+%u_rel_x=zeros(n1,1);
+u_rel_x(i)=u_inf_x2(i)-ux_p(i);
+if u_rel_x(i)<0
+    u_rel_x(i)=-u_rel_x(i);
+end
+
+
+
+% Reynolds number x direction 
+%Re_r_x=zeros(n1,1);
+Re_r_x(i)= roh_c*dia_p(i)*u_rel_x(i)/miu_c;
+
+
+
+
+% Y direction 
+% velocity of free stream at particular point in y direction 
+%u_inf_y2=zeros(n1,1);                 
+u_inf_y2(i)=v_inf*sind(alpha_d);                    
+
+% Relitive velcoity x direction
+%u_rel_y=zeros(n1,1);
+u_rel_y(i)=u_inf_y2(i)-uy_p(i);
+if u_rel_y(i)<0
+    u_rel_y(i)=-u_rel_y(i);
+end
+
+
+
+% Reynolds number y direction
+%Re_r_y=zeros(n1,1);
+Re_r_y(i)= roh_c*dia_p(i)*u_rel_y(i)/miu_c;
+
+
+% resultant reynolds number 
+%Re_r=    zeros(n1,1);
+%u_rel=    zeros(n1,1);
+u_rel(i)=  sqrt(   ( u_inf_x2(i)  -ux_p(i)  )^2  + (  u_inf_y2(i) -  uy_p(i)  )^2    );
+Re_r(i)=    roh_c*dia_p(i)*u_rel(i)/miu_c;
+
+
+%% Nu number 
+
+% X direction 
+%Nu_x=zeros(n1,1);
+Nu_x(i)=2+0.6*(Re_r_x(i)^0.5)*(Pr^(1/3));
+
+
+% Y direction 
+%Nu_y=zeros(n1,1);
+Nu_y(i)=2+0.6*(Re_r_y(i)^0.5)*(Pr^(1/3));
+
+
+
+% resultant Nu number
+%Nu=zeros(n1,1);
+Nu(i)=2+0.6*(Re_r(i)^0.5)*(Pr^(1/3));
+
+%% Thermal response time 
+%toh_T=zeros(n1,1);
+toh_T(i)= cD*roh_d*(dia_p(i)^2)/(12*kc);
+
+
+
+%% sherwood number 
+
+% X direction
+%Sh_x=zeros(n1,1);
+Sh_x(i)=Nu_x(i);
+
+
+% Y direction 
+%Sh_y=zeros(n1,1);
+Sh_y(i)=Nu_y(i);
+
+
+% Resultant direction 
+%Sh=zeros(n1,1);
+Sh(i)=Nu(i);
+
+
+%% Schmidt number 
+Sc=Pr;
+
+
+%% pressure values 
+pa(i)=exp(34.494-(4924.99./((Td(i)-273.15)+237.1)))./(((Td(i)-273.15)+105).^1.57);                                      % this need to validate 
+%pa=2000;
+%% mass fraction of species 
+wAinf=0.005;                                      % Vapor fraction in the air 
+wAs=(18/29)*(pa(i)/p);
+
+%% change in energy of the particle 
+ 
+% Temperature calculations 
+% rk4 model
+
+% function for temp. 
+f_tx=@(t,Td)  ((Nu_x(i)/2)* (1/toh_T(i)) * (Tc-Td) ) + (Sh_x(i)/2) * (1/toh_T(i))*...
+    (Pr/Sc)*(hl/cp)*(wAinf-wAs);        % function for temperature calculation 
+
+% RK4 loop 
+%for i=1:ceil(n)
+    %update t
+    t(i+1)=t(i)+h;
+    %constants 
+    k1=f_tx(t(i)         , Td(i)           );
+    k2=f_tx(t(i)+0.5*h   , Td(i)+0.5*k1*h);
+    k3=f_tx(t(i)+0.5*h   , Td(i)+0.5*k2*h);
+    k4=f_tx(t(i)+    h   , Td(i)+    k3*h);
+    %update y
+   Td(i+1)=Td(i)+(h/6)*(k1 +2*k2+  2*k3 +k4);
+    fprintf('ux_p(%.2f) = %.4f\n', t(i+1),Td(i+1))
+   
+    
+    
+    
+ %Resultant temp   
+    
+ 
+    % function for temp. 
+f_t=@(t,Td)  ((Nu(i)/2)* (1/toh_T(i)) * (Tc-Td) ) + (Sh(i)/2) * (1/toh_T(i))*...
+    (Pr/Sc)*(hl/cp)*(wAinf-wAs);        % function for temperature calculation 
+
+% RK4 loop 
+%for i=1:ceil(n)
+    %update t
+    t(i+1)=t(i)+h;
+    %constants 
+    k1=f_t(t(i)         , Td(i)           );
+    k2=f_t(t(i)+0.5*h   , Td(i)+0.5*k1*h);
+    k3=f_t(t(i)+0.5*h   , Td(i)+0.5*k2*h);
+    k4=f_t(t(i)+    h   , Td(i)+    k3*h);
+    %update y
+   Td(i+1)=Td(i)+(h/6)*(k1 +2*k2+  2*k3 +k4);
+    fprintf('ux_p(%.2f) = %.4f\n', t(i+1),Td(i+1))
+    
+    
+    
+    
+    
+%% change in diameter of particle 
+%lambda=zeros(n1,1);
+lambda(i)=4*Sh(i)*roh_c*Dv*(wAs-wAinf)/roh_d;
+
+%dia_p_sq=zeros(n1,1);
+%dia_p=zeros(n1,1);
+dia_p_sq(i)=(dia_p(i)^2)-lambda(i)*t(i);                  % dia should be intial and time should be total time. % this need verfication  
+dia_p(i+1)=sqrt(dia_p_sq(i));
+
+
+
+
+
+%% change in mass of particle 
+
+%vol_p=zeros(n1,1);
+%m_p=zeros(n1,1);
+vol_p(i)=(3.14/6)*(dia_p(i)^3);                    % volume of particle 
+m_p(i)=vol_p(i)*roh_d;
+
+% Function defination 
+f2=@(t,m_p)  Sh(i)*3.14*dia_p(i)*roh_c*Dv*(wAinf-wAs) ;
+
+    m_p(i+1)=m_p(i)+h*f2(t(i),m_p(i));
+    t(i+1)=t(i)+h;
+    %fprintf('y2(%.2f) = %.4f\n', t(i+1),m_p(i+1))
+
+    
+    
+    
+    
+
+%% Drag force  velocity & distance
+
+%% Schiller and Naumannâ€™s equation
+f_x(i)=1    +     0.15*(Re_r_x(i)^0.687)     +      0.0175*(   (1   +  4.25*10000  *  (Re_r_x(i)^-1.16)    )^-1    );
+
+% rk4 model
+% t(1)=0;
+% h=t_step;
+% tf=2;
+% n=(tf-t)/h;
+
+f=@(t,ux_p) 3*3.14*miu_c*dia_p(i)*f_x(i)*(u_inf_x2(i)-ux_p)/(roh_d*vol_p(i));
+
+% RK4 loop 
+%for i=1:ceil(n)
+    %update t
+    t(i+1)=t(i)+h;
+    %constants 
+    k1=f(t(i)         , ux_p(i)           );
+    k2=f(t(i)+0.5*h   , ux_p(i)+0.5*k1*h);
+    k3=f(t(i)+0.5*h   , ux_p(i)+0.5*k2*h);
+    k4=f(t(i)+    h   , ux_p(i)+    k3*h);
+    %update y
+   ux_p(i+1)=ux_p(i)+(h*1.66666)*(k1 +2*k2+  2*k3 +k4);
+    fprintf('ux_p(%.2f) = %.4f\n', t(i+1),ux_p(i+1))
+%end 
+
+%% distance moved in x direction 
+x_p(i+1)=x_p(i)+(ux_p(i+1)+ux_p(i))*0.5*h;
+
+%% Velocity of particle in y direction 
+
+%% Schiller and Naumannâ€™s equation
+
+f_y(i)=1    +     0.15*(Re_r_y(i)^0.687)     +      0.0175*(   (1   +  4.25*10000  *  (Re_r_y(i)^-1.16)    )^-1    );
+
+
+f1=@(t,uy_p) (3*3.14*miu_c*dia_p(i)*f_y(i)*(u_inf_y2(i)-uy_p)/(roh_d*vol_p(i)))-g;
+ 
+% RK4 loop 
+
+    %update t
+    t(i+1)=t(i)+h;
+    %constants 
+    k11=f1(t(i)         , uy_p(i)           );
+    k12=f1(t(i)+0.5*h   , uy_p(i)+0.5*k11*h);
+    k13=f1(t(i)+0.5*h   , uy_p(i)+0.5*k12*h);
+    k14=f1(t(i)+    h   , uy_p(i)+    k13*h);
+    %update y
+   uy_p(i+1)=uy_p(i)+(h/6)*(k11 +2*k12+  2*k13 +k14);
+    fprintf('y5(%.2f) = %.4f\n', t(i+1),uy_p(i+1))
+ 
+
+%% Distance moved by particle in y direction 
+
+y_p(i+1)=y_p(i)+(uy_p(i+1)+uy_p(i))*0.5*h;
+
+
+i=i+1;
+end
+
+
+plot(x_p,y_p)
+axis square
+hold off
+
